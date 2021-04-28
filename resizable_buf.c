@@ -11,15 +11,20 @@
 #define NDEBUG
 #endif
 
+// don't make buffer smaller than this when freeing memory.
+#define MIN_SIZE 32
+
 extern inline void *rb_ptr(const rb_t *rb);
 extern inline void *rb_endptr(const rb_t *rb);
-extern inline unsigned rb_len(const rb_t *rb);
-extern inline void rb_clear(rb_t *rb);
+extern inline int rb_len(const rb_t *rb);
+extern inline int rb_red_zone(const rb_t *rb);
+
+//extern inline void rb_clear(rb_t *rb);
 
 extern inline int fifo_len(const fifo_t *fifo);
 extern inline void *fifo_head(const fifo_t *fifo);
 extern inline bool fifo_is_empty(const fifo_t *fifo);
-extern inline void fifo_clear(fifo_t *fifo);
+extern inline void fifo_discard(fifo_t *fifo);
 
 void rb_free(rb_t *rb)
 {
@@ -28,15 +33,18 @@ void rb_free(rb_t *rb)
 }
 
 /* ensure there are at least sz bytes past current length */
-static void
+void
 rb_grow(rb_t *rb, size_t sz)
 {
         assert(rb->len <= rb->size);
         assert(!rb->size || rb->buf);
-        while (rb->len + sz > rb->size)
-                rb->size = rb->size + (rb->size >> 1) + 8;
-        rb->buf = realloc(rb->buf, rb->size);
-        assert(rb->buf);
+        unsigned osz = rb->size;
+        while (rb->len + sz > osz)
+                osz = osz + (osz >> 1) + 8;
+        if (osz != rb->size) {
+                rb->size = osz;
+                rb->buf = realloc(rb->buf, rb->size);
+        }
         assert(rb->len <= rb->size);
         assert(!rb->size || rb->buf);
 }
@@ -75,6 +83,12 @@ rb_resize_fill(rb_t *rb, size_t len, char fillvalue)
                 memset(rb_ptr(rb) + rb->len, fillvalue, len - rb->len);
         rb->len = len;
         assert(rb->len <= rb->size);
+}
+
+void *
+rb_calloc(rb_t *rb, size_t len)
+{
+        return memset(rb_push(rb, len), 0, len);
 }
 
 /* parameters are reversed from usual to mimic c putc, this allows passing it to
@@ -162,6 +176,11 @@ rb_puts(char *str, rb_t *rb)
 void *
 rb_extract(rb_t *rb, const rb_t *rb2, unsigned loc, size_t len)
 {
+        ssize_t nlen = len;
+        if (loc + len > rb->len)
+                nlen -= loc + len - rb->len;
+        if (nlen <  0)
+                return rb_endptr(rb);
         return rb_append(rb, (char *)rb_ptr(rb2) + loc, len);
 }
 
@@ -257,6 +276,29 @@ void *rb_peek(rb_t *rb, int n)
                 return NULL;
 }
 
+void *rb_assign(rb_t *dst, rb_t *src)
+{
+        rb_free(dst);
+        *dst = *src;
+        *src = (rb_t)RB_BLANK;
+        return rb_ptr(dst);
+}
+
+void rb_swap(rb_t *x, rb_t *y)
+{
+        rb_t t = *x;
+        *x = *y;
+        *y = t;
+}
+
+/* take over ownership of the malloc'ed buffer */
+void *rb_take(rb_t *rb)
+{
+        void *r = rb_ptr(rb);
+        *rb = (rb_t)RB_BLANK;
+        return r;
+}
+
 void *rb_pop(rb_t *rb, int n)
 {
         if (n <= rb->len) {
@@ -273,6 +315,7 @@ void *rb_push(rb_t *rb, int n)
         return ret;
 }
 
+/* the pointer returned becomes invalid after any fifo mutation */
 void *
 fifo_append(fifo_t *fifo, void *data, size_t len)
 {
@@ -285,13 +328,14 @@ fifo_append(fifo_t *fifo, void *data, size_t len)
         return rb_append(&fifo->rb, data, len);
 }
 
+/* the pointer returned becomes invalid after any fifo mutation */
 void *fifo_dequeue(fifo_t *fifo, size_t len)
 {
         void *res = fifo_head(fifo);
         if (len > fifo_len(fifo))
                 return NULL;
         if (len == fifo_len(fifo))
-                fifo_clear(fifo);
+                fifo_discard(fifo);
         else
                 fifo->offset += len;
         return res;
