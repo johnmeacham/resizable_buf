@@ -18,6 +18,8 @@ extern inline void *rb_ptr(const rb_t *rb);
 extern inline void *rb_endptr(const rb_t *rb);
 extern inline int rb_len(const rb_t *rb);
 extern inline int rb_red_zone(const rb_t *rb);
+extern inline void *_rb_pop_unsafe(rb_t *rb, int n);
+extern inline void *_rb_peek_unsafe(rb_t *rb, int n);
 
 //extern inline void rb_clear(rb_t *rb);
 

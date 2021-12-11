@@ -55,6 +55,10 @@ struct rb {
 #define RB_POP(t,rb)       *RB_POPN(t,rb,1)
 #define RB_PUSH(t,rb)      *RB_PUSHN(t,rb,1)
 
+/* maybe pop and peek, these return els if there is nothing available */
+#define RB_MPOP(t,rb, els)   (rb_len(rb) >= sizeof(t) ? *(t *)_rb_pop_unsafe(rb,sizeof(t)) : els)
+#define RB_MPEEK(t,rb, els)  (rb_len(rb) >= sizeof(t) ? *(t *)_rb_peek_unsafe(rb,sizeof(t)) : els)
+
 
 // these require the argument be addressable but don't need the type explicitly
 // passed.
@@ -106,6 +110,18 @@ inline int rb_len(const rb_t *rb)
 inline int rb_red_zone(const rb_t *rb)
 {
         return rb->size - rb->len;
+}
+
+/* these are unsafe and will break if there is not enough data in the buffer */
+inline void *_rb_pop_unsafe(rb_t *rb, int n)
+{
+        rb->len -= n;
+        return rb_endptr(rb);
+}
+
+inline void *_rb_peek_unsafe(rb_t *rb, int n)
+{
+        return rb_endptr(rb) - n;
 }
 
 /* clears rb to the empty buffer and frees all memory associated with it. */
