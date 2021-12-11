@@ -49,7 +49,7 @@ struct rb {
  */
 #define RB_PUSHN(t,rb,n)   (t *)(rb_push(rb, (n)*sizeof(t)))
 #define RB_POPN(t,rb,n)    (t *)(rb_pop(rb, (n)*sizeof(t)))
-#define RB_PEEKN(t,rb,n)   (t *)(rb_pop(rb, (n)*sizeof(t)))
+#define RB_PEEKN(t,rb,n)   (t *)(rb_peek(rb, (n)*sizeof(t)))
 
 #define RB_PEEK(t,rb)      *RB_PEEKN(t,rb,1)
 #define RB_POP(t,rb)       *RB_POPN(t,rb,1)
