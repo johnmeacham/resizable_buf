@@ -198,6 +198,11 @@ int rb_putwc(uint32_t, rb_t *rb);
 char *rb_strcpy(rb_t *rb, char *str);
 char *rb_strcat(rb_t *rb, char *str);
 int rb_printf(rb_t *rb, char *fmt, ...);
+char *rb_strins(rb_t *rb, int loc, char *str);
+/* concatinate multiple strings, must be null terminated */
+char *rb_strcats(rb_t *rb, ...);
+
+
 
 /* specialty routines */
 
@@ -218,7 +223,7 @@ struct fifo {
         unsigned offset;
 };
 
-#define FIFO_BLANK  {RB_BLANK, 0}
+#define FIFO_BLANK  {RB_BLANK, 0, 0}
 
 inline int fifo_len(const fifo_t *fifo)
 {

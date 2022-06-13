@@ -162,6 +162,26 @@ rb_strcat(rb_t *rb, char *str)
         return res;
 }
 
+char *
+rb_strcats(rb_t *rb, ...)
+{
+        va_list ap;
+        va_start(ap, rb);
+        char *res = rb_endptr(rb);
+        for (char *s = va_arg(ap, char *); s; s = va_arg(ap, char *))
+                rb_append(rb, s, strlen(s));
+        rb_stringize(rb);
+        return res;
+}
+
+char *
+rb_strins(rb_t *rb, int loc, char *str)
+{
+        char *r =  rb_insert(rb, loc, str, strlen(str));
+        rb_stringize(rb);
+        return r;
+}
+
 /* similar to rb_strcat but returns number of bytes copied rather than pointer
  * to destination, follows stdio argument convention */
 int
